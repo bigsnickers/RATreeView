@@ -265,6 +265,18 @@
   [self collapseCellForTreeNode:treeNode collapseChildren:collapseChildren withRowAnimation:animation];
 }
 
+- (void)collapseAllExpandedItems
+{
+  for ( id child in self.allItems )
+  {
+    if ( [self isCellForItemExpanded:child] )
+    {
+      
+      RATreeNode *treeNode = [self treeNodeForIndexPath:[self indexPathForItem:child]];
+      [self collapseCellForTreeNode:treeNode informDelegate:YES];
+    }
+  }
+}
 
 #pragma mark - Changing tree's structure
 

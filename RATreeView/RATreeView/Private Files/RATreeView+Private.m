@@ -144,6 +144,29 @@
   [self.tableView endUpdates];
 }
 
+- (void)collapseCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate
+{
+    if (informDelegate) {
+        if ([self.delegate respondsToSelector:@selector(treeView:willCollapseRowForItem:)]) {
+            [self.delegate treeView:self willCollapseRowForItem:treeNode.item];
+        }
+    }
+    
+    [CATransaction begin];
+    [CATransaction setCompletionBlock:^{
+        if ([self.delegate respondsToSelector:@selector(treeView:didCollapseRowForItem:)] &&
+            informDelegate) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                //Content size of the UITableView isn't updates when completion block of the CATransaction is called. To make it possible for the user of the RATreeView to get a correct content size in the implementation of the 'treeView:didCollapseRowForItem' RATreeView calls this method in the next run loop.
+                [self.delegate treeView:self didCollapseRowForItem:treeNode.item];
+            });
+        }
+    }];
+    
+    [self collapseCellForTreeNode:treeNode];
+    [CATransaction commit];
+}
+
 - (void)insertItemAtIndex:(NSInteger)index inParent:(id)parent withAnimation:(RATreeViewRowAnimation)animation
 {
   NSInteger idx = [self.treeNodeCollectionController indexForItem:parent];
@@ -204,6 +227,96 @@
       [weakSelf.tableView deleteRowsAtIndexPaths:IndexesToIndexPaths(removedIndexes) withRowAnimation:tableViewRowAnimation];
     }];
   } atIndex:idx];
+}
+
+- (void)collapseAllCellsExceptCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate completion:(void (^)(void))completion
+{
+    id expandedItem = treeNode.item;
+    NSMutableArray *parentItems = [NSMutableArray new];
+    while ( [self parentForItem:expandedItem] != nil )
+    {
+        [parentItems addObject:[self parentForItem:expandedItem]];
+    }
+    
+    NSArray *allItems = [self allItems];
+    NSMutableArray *itemsToCollapse = [NSMutableArray new];
+    for ( id item in allItems )
+    {
+        if ( ![parentItems containsObject:item] && [self isCellForItemExpanded:item] )
+        {
+            [itemsToCollapse addObject:item];
+        }
+    }
+    
+    if ( itemsToCollapse.count == 0 )
+    {
+        completion();
+        return;
+    }
+    
+    if (informDelegate)
+    {
+        if ([self.delegate respondsToSelector:@selector(treeView:willCollapseRowForItem:)])
+        {
+            for ( id item in itemsToCollapse )
+            {
+                [self.delegate treeView:self willCollapseRowForItem:item];
+            }
+        }
+    }
+    
+    [CATransaction begin];
+    [CATransaction setCompletionBlock:^{
+        
+        if ([self.delegate respondsToSelector:@selector(treeView:didCollapseRowForItem:)] &&
+            informDelegate) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                //Content size of the UITableView isn't updates when completion block of the CATransaction is called. To make it possible for the user of the RATreeView to get a correct content size in the implementation of the 'treeView:didCollapseRowForItem' RATreeView calls this method in the next run loop.
+                
+                for ( id item in itemsToCollapse )
+                {
+                    [self.delegate treeView:self didCollapseRowForItem:item];
+                }
+                
+                completion();
+            });
+        }
+        else
+        {
+            completion();
+        }
+    }];
+    
+    for ( id item in itemsToCollapse )
+    {
+        RATreeNode *nodeToCollapse = [self treeNodeForIndexPath:[self indexPathForItem:item]];
+        [self collapseCellForTreeNode:nodeToCollapse];
+    }
+    
+    [CATransaction commit];
+}
+
+- (void)expandCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate
+{
+    if (informDelegate) {
+        if ([self.delegate respondsToSelector:@selector(treeView:willExpandRowForItem:)]) {
+            [self.delegate treeView:self willExpandRowForItem:treeNode.item];
+        }
+    }
+    
+    [CATransaction begin];
+    [CATransaction setCompletionBlock:^{
+        if ([self.delegate respondsToSelector:@selector(treeView:didExpandRowForItem:)] &&
+            informDelegate) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                //Content size of the UITableView isn't updates when completion block of the CATransaction is called. To make it possible for the user of the RATreeView to get a correct content size in the implementation of the 'treeView:didExpandRowForItem' RATreeView calls this method in the next run loop.
+                [self.delegate treeView:self didExpandRowForItem:treeNode.item];
+            });
+        }
+    }];
+    
+    [self expandCellForTreeNode:treeNode];
+    [CATransaction commit];
 }
 
 #pragma mark -

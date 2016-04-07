@@ -40,6 +40,11 @@
 - (void)expandCellForTreeNode:(RATreeNode *)treeNode;
 - (void)expandCellForTreeNode:(RATreeNode *)treeNode expandChildren:(BOOL)expandChildren withRowAnimation:(RATreeViewRowAnimation)rowAnimation;
 
+- (void)collapseAllCellsExceptCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate completion:(void (^)(void))completion;
+- (void)collapseCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate;
+
+- (void)expandCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate;
+
 - (void)insertItemAtIndex:(NSInteger)index inParent:(id)parent withAnimation:(RATreeViewRowAnimation)animation;
 - (void)removeItemAtIndex:(NSInteger)indexe inParent:(id)parent withAnimation:(RATreeViewRowAnimation)animation;
 
