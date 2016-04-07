@@ -546,6 +546,44 @@
   [self.tableView reloadData];
 }
 
+- (void)reloadDataBySavingExpandedStates:(BOOL)saveExpandedStates
+{
+  [UIView performWithoutAnimation:^{
+    
+    if ( !saveExpandedStates )
+    {
+      [self reloadData];
+      return;
+    }
+    
+    NSMutableArray *expandedItems = [NSMutableArray new];
+    
+    NSArray *items = [self allItems];
+    for ( id item in items )
+    {
+      if ( [self isCellForItemExpanded:item] )
+      {
+        [expandedItems addObject:item];
+      }
+    }
+    
+    CGPoint contentOffset = self.scrollView.contentOffset;
+    
+    [self reloadData];
+    
+    items = [self allItems];
+    for ( id expandedItem in expandedItems )
+    {
+      if ( [items containsObject:expandedItem] )
+      {
+        [self expandRowForItem:expandedItem withRowAnimation:RATreeViewRowAnimationNone];
+      }
+    }
+    
+    self.scrollView.contentOffset = contentOffset;
+  }];
+}
+
 - (void)reloadRowsForItems:(NSArray *)items withRowAnimation:(RATreeViewRowAnimation)animation
 {
   NSMutableArray *indexes = [NSMutableArray array];

@@ -33,6 +33,34 @@
 
 @implementation RATreeView (Private)
 
+- (NSArray *)allItems
+{
+    return [self allChildrenOfItem:nil];
+}
+
+- (NSArray *)allChildrenOfItem:(id)item
+{
+    NSInteger numberOfChildren = [self treeNodeCollectionController:nil numberOfChildrenForItem:item];
+    if ( !numberOfChildren )
+    {
+        return item ? @[item] : @[];
+    }
+    
+    NSMutableArray *items = [NSMutableArray new];
+    if ( item )
+    {
+        [items addObject:item];
+    }
+    
+    for ( NSUInteger index = 0; index < numberOfChildren; index++ )
+    {
+        id childItem = [self treeNodeCollectionController:nil child:index ofItem:item];
+        [items addObjectsFromArray:[self allChildrenOfItem:childItem]];
+    }
+    
+    return [NSArray arrayWithArray:items];
+}
+
 - (void)setupTreeStructure
 {
   self.treeNodeCollectionController = [[RATreeNodeCollectionController alloc] init];
