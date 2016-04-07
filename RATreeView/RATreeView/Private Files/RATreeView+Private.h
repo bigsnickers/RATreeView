@@ -27,6 +27,9 @@
 
 @interface RATreeView (Private)
 
+- (NSArray *)allItems;
+- (NSArray *)allChildrenOfItem:(id)item;
+
 - (RATreeNode *)treeNodeForIndexPath:(NSIndexPath *)indexPath;
 - (NSIndexPath *)indexPathForItem:(id)item;
 

@@ -114,10 +114,28 @@
   } else {
     if ([self.delegate respondsToSelector:@selector(treeView:shouldExpandRowForItem:)]) {
       if ([self.delegate treeView:self shouldExpandRowForItem:treeNode.item]) {
-        [self expandCellForTreeNode:treeNode informDelegate:YES];
+          if ( self.collapsesOtherRowsWhenRowExpands ) {
+              __weak typeof(self) weakSelf = self;
+              [self collapseAllCellsExpectCellForTreeNode:treeNode informDelegate:YES completion:^{
+                  __strong typeof(weakSelf) strongSelf = weakSelf;
+                  [strongSelf expandCellForTreeNode:treeNode informDelegate:YES];
+              }];
+          }
+          else {
+              [self expandCellForTreeNode:treeNode informDelegate:YES];
+          }
       }
     } else {
-      [self expandCellForTreeNode:treeNode informDelegate:YES];
+        if ( self.collapsesOtherRowsWhenRowExpands ) {
+            __weak typeof(self) weakSelf = self;
+            [self collapseAllCellsExpectCellForTreeNode:treeNode informDelegate:YES completion:^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                [strongSelf expandCellForTreeNode:treeNode informDelegate:YES];
+            }];
+        }
+        else {
+            [self expandCellForTreeNode:treeNode informDelegate:YES];
+        }
     }
   }
 }
@@ -267,6 +285,73 @@
 
 
 #pragma mark - Private Helpers
+
+- (void)collapseAllCellsExpectCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate completion:(void (^)(void))completion
+{
+    id expandedItem = treeNode.item;
+    NSMutableArray *parentItems = [NSMutableArray new];
+    while ( [self parentForItem:expandedItem] != nil )
+    {
+        [parentItems addObject:[self parentForItem:expandedItem]];
+    }
+    
+    NSArray *allItems = [self allItems];
+    NSMutableArray *itemsToCollapse = [NSMutableArray new];
+    for ( id item in allItems )
+    {
+       if ( ![parentItems containsObject:item] && [self isCellForItemExpanded:item] )
+       {
+           [itemsToCollapse addObject:item];
+       }
+    }
+    
+    if ( itemsToCollapse.count == 0 )
+    {
+        completion();
+        return;
+    }
+    
+    if (informDelegate)
+    {
+        if ([self.delegate respondsToSelector:@selector(treeView:willCollapseRowForItem:)])
+        {
+            for ( id item in itemsToCollapse )
+            {
+                [self.delegate treeView:self willCollapseRowForItem:item];
+            }
+        }
+    }
+    
+    [CATransaction begin];
+    [CATransaction setCompletionBlock:^{
+        
+        if ([self.delegate respondsToSelector:@selector(treeView:didCollapseRowForItem:)] &&
+            informDelegate) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                //Content size of the UITableView isn't updates when completion block of the CATransaction is called. To make it possible for the user of the RATreeView to get a correct content size in the implementation of the 'treeView:didCollapseRowForItem' RATreeView calls this method in the next run loop.
+                
+                for ( id item in itemsToCollapse )
+                {
+                    [self.delegate treeView:self didCollapseRowForItem:item];
+                }
+                
+                completion();
+            });
+        }
+        else
+        {
+            completion();
+        }
+    }];
+    
+    for ( id item in itemsToCollapse )
+    {
+        RATreeNode *nodeToCollapse = [self treeNodeForIndexPath:[self indexPathForItem:item]];
+        [self collapseCellForTreeNode:nodeToCollapse];
+    }
+    
+    [CATransaction commit];
+}
 
 - (void)collapseCellForTreeNode:(RATreeNode *)treeNode informDelegate:(BOOL)informDelegate
 {
